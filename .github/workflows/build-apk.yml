@@ -1,1 +1,51 @@
 
+name: Build RELIEF Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify and extract project
+        run: |
+          test -f RELIEF-Android-1.0.1-audit-update.zip
+          mkdir extracted
+          unzip -q RELIEF-Android-1.0.1-audit-update.zip -d extracted
+
+      - name: Locate Android project
+        run: |
+          WRAPPER=$(find extracted -type f -name gradlew | head -n 1)
+          test -n "$WRAPPER"
+          PROJECT_DIR=$(dirname "$WRAPPER")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RELIEF-Android-APK
+          path: extracted/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          
